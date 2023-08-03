@@ -25,69 +25,74 @@ export class TransactionsService {
       bankAccountId,
     });
 
-    const { id: creditedBankAccountId } =
-      await this.bankAccountsRepository.findFirst({
-        where: {
-          user: {
-            username: receivingUsername,
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-    if (!creditedBankAccountId) {
-      throw new NotFoundException('User receiving not found.');
-    }
-
-    const userBalance = await this.bankAccountsRepository.findFirst({
+    const user = await this.bankAccountsRepository.findFirst({
       where: {
         id: bankAccountId,
         userId,
       },
       select: {
         balance: true,
-      },
-    });
-
-    if (userBalance.balance < value) {
-      throw new BadRequestException('User does not have enough balance.');
-    }
-
-    await this.transactionsRepository.create({
-      data: {
-        value,
-        userId,
-        bankAccountId,
-        debitedBankAccountId: bankAccountId,
-        creditedBankAccountId,
-      },
-    });
-
-    await this.bankAccountsRepository.update({
-      where: {
-        id: bankAccountId,
-      },
-      data: {
-        balance: {
-          decrement: value,
+        user: {
+          select: {
+            username: true,
+          },
         },
       },
     });
 
-    await this.bankAccountsRepository.update({
-      where: {
-        id: creditedBankAccountId,
-      },
-      data: {
-        balance: {
-          increment: value,
-        },
-      },
-    });
+    // if (user.balance < value) {
+    //   throw new BadRequestException('User does not have enough balance.');
+    // }
 
-    return null;
+    // const { id: creditedBankAccountId } =
+    //   await this.bankAccountsRepository.findFirst({
+    //     where: {
+    //       user: {
+    //         username: receivingUsername,
+    //       },
+    //     },
+    //     select: {
+    //       id: true,
+    //     },
+    //   });
+
+    // if (!creditedBankAccountId) {
+    //   throw new NotFoundException('User receiving not found.');
+    // }
+
+    // await this.transactionsRepository.create({
+    //   data: {
+    //     value,
+    //     userId,
+    //     bankAccountId,
+    //     debitedBankAccountId: bankAccountId,
+    //     creditedBankAccountId,
+    //   },
+    // });
+
+    // await this.bankAccountsRepository.update({
+    //   where: {
+    //     id: bankAccountId,
+    //   },
+    //   data: {
+    //     balance: {
+    //       decrement: value,
+    //     },
+    //   },
+    // });
+
+    // await this.bankAccountsRepository.update({
+    //   where: {
+    //     id: creditedBankAccountId,
+    //   },
+    //   data: {
+    //     balance: {
+    //       increment: value,
+    //     },
+    //   },
+    // });
+
+    // return null;
   }
 
   // findAllByUserId(bankAccountId: string) {
