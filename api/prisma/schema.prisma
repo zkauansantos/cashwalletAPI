@@ -15,17 +15,38 @@ model User {
   username String @unique
   password String
 
-  bankAccount BankAccount[]
+  bankAccount  BankAccount[]
+  transactions Transaction[]
 
   @@map("users")
 }
 
 model BankAccount {
   id      String @id @default(uuid()) @db.Uuid
-  userId  String @map("user_id") @db.Uuid
+  userId  String @unique @map("user_id") @db.Uuid
   balance Float
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions         Transaction[]
+  transactionsDebited  Transaction[] @relation("debited")
+  transactionsCredited Transaction[] @relation("credited")
 
   @@map("bank_accounts")
+}
+
+model Transaction {
+  id                    String   @id @default(uuid()) @db.Uuid
+  creditedBankAccountId String   @map("credited_bank_account_id") @db.Uuid
+  debitedBankAccountId  String   @map("debited_bank_account_id") @db.Uuid
+  bankAccountId         String   @map("bank_account_id") @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  date                  DateTime @default(now())
+  value                 Float
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credited    BankAccount @relation(name: "credited", fields: [creditedBankAccountId], references: [id], onDelete: Cascade)
+  debited     BankAccount @relation(name: "debited", fields: [debitedBankAccountId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
 }
