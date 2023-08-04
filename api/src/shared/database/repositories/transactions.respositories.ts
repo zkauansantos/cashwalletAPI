@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { type Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TransactionsRepository {
@@ -10,7 +10,12 @@ export class TransactionsRepository {
     return this.prismaService.transaction.create(createBankAccountDto);
   }
 
-  findMany(findAllBankAccountDto: Prisma.TransactionFindManyArgs) {
+  findMany<T extends Prisma.TransactionFindManyArgs>(
+    findAllBankAccountDto: Prisma.SelectSubset<
+      T,
+      Prisma.TransactionFindManyArgs
+    >,
+  ) {
     return this.prismaService.transaction.findMany(findAllBankAccountDto);
   }
 

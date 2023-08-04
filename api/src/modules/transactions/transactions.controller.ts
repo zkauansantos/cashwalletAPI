@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { TransactionsService } from './services/transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { ActiveUserId } from 'src/shared/decorators/activeUserId.decorator';
@@ -15,11 +15,11 @@ export class TransactionsController {
     return this.transactionsService.create(userId, createTransactionDto);
   }
 
-  // @Get()
-  // findAll(
-  //   @ActiveUserId() userId: string,
-  //   @Query('bankAccountId', OptinalParseUUIDPipe) bankAccountId?: string,
-  // ) {
-  //   return this.transactionsService.findAllByUserId(bankAccountId);
-  // }
+  @Get()
+  findAll(
+    @ActiveUserId() userId: string,
+    @Query('bankAccountId') bankAccountId?: string,
+  ) {
+    return this.transactionsService.findAllByUserId(userId, bankAccountId);
+  }
 }

@@ -40,68 +40,66 @@ export class TransactionsService {
       },
     });
 
-    // if (user.balance < value) {
-    //   throw new BadRequestException('User does not have enough balance.');
-    // }
+    if (user.balance < value) {
+      throw new BadRequestException('User does not have enough balance.');
+    }
 
-    // const { id: creditedBankAccountId } =
-    //   await this.bankAccountsRepository.findFirst({
-    //     where: {
-    //       user: {
-    //         username: receivingUsername,
-    //       },
-    //     },
-    //     select: {
-    //       id: true,
-    //     },
-    //   });
+    const { id: creditedBankAccountId } =
+      await this.bankAccountsRepository.findFirst({
+        where: {
+          user: {
+            username: receivingUsername,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
 
-    // if (!creditedBankAccountId) {
-    //   throw new NotFoundException('User receiving not found.');
-    // }
+    if (!creditedBankAccountId) {
+      throw new NotFoundException('User receiving not found.');
+    }
 
-    // await this.transactionsRepository.create({
-    //   data: {
-    //     value,
-    //     userId,
-    //     bankAccountId,
-    //     debitedBankAccountId: bankAccountId,
-    //     creditedBankAccountId,
-    //   },
-    // });
+    await this.transactionsRepository.create({
+      data: {
+        value,
+        debitedBankAccountId: bankAccountId,
+        creditedBankAccountId,
+      },
+    });
 
-    // await this.bankAccountsRepository.update({
-    //   where: {
-    //     id: bankAccountId,
-    //   },
-    //   data: {
-    //     balance: {
-    //       decrement: value,
-    //     },
-    //   },
-    // });
+    await this.bankAccountsRepository.update({
+      where: {
+        id: bankAccountId,
+      },
+      data: {
+        balance: {
+          decrement: value,
+        },
+      },
+    });
 
-    // await this.bankAccountsRepository.update({
-    //   where: {
-    //     id: creditedBankAccountId,
-    //   },
-    //   data: {
-    //     balance: {
-    //       increment: value,
-    //     },
-    //   },
-    // });
+    await this.bankAccountsRepository.update({
+      where: {
+        id: creditedBankAccountId,
+      },
+      data: {
+        balance: {
+          increment: value,
+        },
+      },
+    });
 
-    // return null;
+    return null;
   }
 
-  // findAllByUserId(bankAccountId: string) {
-  //   return this.transactionsRepository.findMany({
-  //     where: {
-  //       bankAccountId,
-  //     },
-  //   });
-  // }
+  async findAllByUserId(userId: string, bankAccountId: string) {
+    const transactions = await this.transactionsRepository.findMany({
+      where: {},
+    });
+
+    console.log(transactions);
+  }
 
   private async validateEntitiesOwnership({
     userId,
