@@ -8,12 +8,15 @@ import { CreateTransactionDto } from '../dto/create-transaction.dto';
 import { TransactionsRepository } from 'src/shared/database/repositories/transactions.respositories';
 import { BankAccountsRepository } from 'src/shared/database/repositories/bank-accounts.repositories';
 import { ValidateBankAccountOwnerService } from 'src/modules/bank-accounts/services/validate-bank-account-owner.service';
+import { TransactionFilter } from '../entities/TransactionType';
+import { UsersRepository } from 'src/shared/database/repositories/users.repositiories';
 
 @Injectable()
 export class TransactionsService {
   constructor(
     private readonly bankAccountsRepository: BankAccountsRepository,
     private readonly transactionsRepository: TransactionsRepository,
+    private readonly usersRepository: UsersRepository,
     private readonly validateBankAccountOwnerService: ValidateBankAccountOwnerService,
   ) {}
 
@@ -25,7 +28,7 @@ export class TransactionsService {
       bankAccountId,
     });
 
-    const user = await this.bankAccountsRepository.findFirst({
+    const { balance, user } = await this.bankAccountsRepository.findFirst({
       where: {
         id: bankAccountId,
         userId,
@@ -40,37 +43,107 @@ export class TransactionsService {
       },
     });
 
-    if (user.balance < value) {
+    if (balance < value) {
       throw new BadRequestException('User does not have enough balance.');
     }
 
-    const { id: creditedBankAccountId } =
-      await this.bankAccountsRepository.findFirst({
-        where: {
-          user: {
-            username: receivingUsername,
+    if (user.username === receivingUsername) {
+      throw new BadRequestException(
+        'Sending user cannot be the same as receiving.',
+      );
+    }
+
+    const userReceiver = await this.findUserReceiverAndBankAccountId(
+      receivingUsername,
+    );
+
+    await this.createTransactionAndUpdateBalances(
+      bankAccountId,
+      userReceiver.bankAccount.id,
+      value,
+    );
+
+    return null;
+  }
+
+  async findAllByBankAccountId(
+    userId: string,
+    bankAccountId: string,
+    filter: TransactionFilter,
+  ) {
+    await this.validateEntitiesOwnership({ userId, bankAccountId });
+
+    const transactions = await this.bankAccountsRepository.findUnique({
+      where: {
+        id: bankAccountId,
+      },
+      select: {
+        transactionsCredited: true,
+        transactionsDebited: true,
+      },
+    });
+
+    if (filter === 'CREDITED') {
+      return transactions.transactionsCredited;
+    }
+
+    if (filter === 'DEBITED') {
+      return transactions.transactionsDebited;
+    }
+
+    return [
+      ...transactions.transactionsCredited,
+      ...transactions.transactionsDebited,
+    ];
+  }
+
+  private async validateEntitiesOwnership({
+    userId,
+    bankAccountId,
+  }: {
+    userId: string;
+    bankAccountId: string;
+  }) {
+    await this.validateBankAccountOwnerService.validate(bankAccountId, userId);
+  }
+
+  private async findUserReceiverAndBankAccountId(username: string) {
+    const userReceiver = await this.usersRepository.findUnique({
+      where: {
+        username,
+      },
+      include: {
+        bankAccount: {
+          select: {
+            id: true,
           },
         },
-        select: {
-          id: true,
-        },
-      });
+      },
+    });
 
-    if (!creditedBankAccountId) {
+    if (!userReceiver) {
       throw new NotFoundException('User receiving not found.');
     }
 
+    return userReceiver;
+  }
+
+  private async createTransactionAndUpdateBalances(
+    debitedBankAccountId: string,
+    creditedBankAccountId: string,
+    value: number,
+  ) {
     await this.transactionsRepository.create({
       data: {
         value,
-        debitedBankAccountId: bankAccountId,
-        creditedBankAccountId,
+        debitedBankAccountId: debitedBankAccountId,
+        creditedBankAccountId: creditedBankAccountId,
       },
     });
 
     await this.bankAccountsRepository.update({
       where: {
-        id: bankAccountId,
+        id: debitedBankAccountId,
       },
       data: {
         balance: {
@@ -89,27 +162,5 @@ export class TransactionsService {
         },
       },
     });
-
-    return null;
-  }
-
-  async findAllByUserId(userId: string, bankAccountId: string) {
-    const transactions = await this.transactionsRepository.findMany({
-      where: {},
-    });
-
-    console.log(transactions);
-  }
-
-  private async validateEntitiesOwnership({
-    userId,
-    bankAccountId,
-  }: {
-    userId: string;
-    bankAccountId: string;
-  }) {
-    await Promise.all([
-      this.validateBankAccountOwnerService.validate(bankAccountId, userId),
-    ]);
   }
 }
